@@ -1005,6 +1005,7 @@ var App = {
   pollTimer: null,
   selectedIds: {},
   browserPath: '',
+  browserRootPath: '',
 };
 
 // ============ API Helpers ============
@@ -1545,6 +1546,8 @@ function openBrowser() {
   var current = document.getElementById('inputSaveDir').value.trim();
   // 空路径让后端自动探测可用起始目录
   App.browserPath = current || '';
+  // 不预设 rootPath，由 browseDir 根据后端返回自动推导
+  App.browserRootPath = '';
   document.getElementById('browserOverlay').classList.remove('hidden');
   browseDir(App.browserPath);
 }
@@ -1553,6 +1556,7 @@ function browseSettingsDir() {
   App.browserTarget = 'settingSaveDir';
   var current = document.getElementById('settingSaveDir').value.trim();
   App.browserPath = current || '';
+  App.browserRootPath = '';
   document.getElementById('browserOverlay').classList.remove('hidden');
   browseDir(App.browserPath);
 }
@@ -1561,9 +1565,11 @@ function closeBrowser() {
   document.getElementById('browserOverlay').classList.add('hidden');
 }
 
+// 标记当前是否处于多根目录选择视图
+var browserAtRoots = false;
+
 async function browseDir(path) {
   App.browserPath = path;
-  renderBreadcrumb(path);
 
   var folderListEl = document.getElementById('folderList');
   folderListEl.innerHTML = '<div style="grid-column:1/-1;text-align:center;color:#a3b1c6;padding:20px;">加载中...</div>';
@@ -1581,10 +1587,29 @@ async function browseDir(path) {
       return;
     }
 
-    // 后端可能自动探测了其他起始目录，同步更新当前路径
-    if (data.currentPath) {
-      App.browserPath = data.currentPath;
-      renderBreadcrumb(data.currentPath);
+    // ---- 多根目录选择视图 ----
+    if (data.isRoots) {
+      browserAtRoots = true;
+      App.browserPath = '';
+      App.browserRootPath = '';
+      renderBreadcrumb('');
+    } else {
+      browserAtRoots = false;
+      // 同步实际路径
+      if (data.currentPath) {
+        App.browserPath = data.currentPath;
+        // 使用后端返回的 rootPath 准确定位根路径
+        if (data.rootPath) {
+          App.browserRootPath = data.rootPath;
+        } else if (!App.browserRootPath) {
+          // 兜底：取第一段作为根
+          var segments = data.currentPath.split('/').filter(function(p) { return p.length > 0; });
+          if (segments.length > 0) {
+            App.browserRootPath = '/' + segments[0];
+          }
+        }
+      }
+      renderBreadcrumb(App.browserPath);
     }
 
     var items = data.data;
@@ -1609,6 +1634,10 @@ async function browseDir(path) {
 
       if (item.isDir) {
         div.addEventListener('click', function() {
+          // 进入子目录时，如果是从多根视图进入的，记录根路径
+          if (!App.browserRootPath && data.isRoots) {
+            App.browserRootPath = item.path;
+          }
           browseDir(item.path);
         });
         div.addEventListener('dblclick', function() {
@@ -1631,19 +1660,36 @@ function renderBreadcrumb(path) {
   var el = document.getElementById('breadcrumb');
   el.innerHTML = '';
 
-  // Split path into segments
-  var parts = path.split('/').filter(function(p) { return p.length > 0; });
+  var rootPath = App.browserRootPath || '';
 
-  // Root segment
+  // 多根目录选择视图
+  if (!path || !rootPath) {
+    var hint = document.createElement('span');
+    hint.textContent = '选择目录';
+    hint.style.color = '#4a5568';
+    hint.style.fontWeight = '600';
+    el.appendChild(hint);
+    return;
+  }
+
+  // Root segment — 点击回到多根选择视图
   var root = document.createElement('span');
   root.className = 'breadcrumb-seg';
-  root.textContent = '/';
+  root.textContent = rootPath === '/' ? '/' : rootPath;
   root.addEventListener('click', function() {
-    browseDir('/');
+    App.browserRootPath = '';
+    browseDir('');
   });
   el.appendChild(root);
 
-  var currentPath = '';
+  // 只展示根路径之下的子段
+  var subPath = path;
+  if (rootPath !== '/' && path.startsWith(rootPath)) {
+    subPath = path.substring(rootPath.length);
+  }
+  var parts = subPath.split('/').filter(function(p) { return p.length > 0; });
+
+  var currentPath = rootPath === '/' ? '' : rootPath;
   parts.forEach(function(seg, idx) {
     // Separator
     var sep = document.createElement('span');
@@ -1937,12 +1983,31 @@ document.getElementById('browserOverlay').addEventListener('click', function(e) 
 });
 
 document.getElementById('btnBrowserUp').addEventListener('click', function() {
-  // Go up one level
-  var parts = App.browserPath.split('/').filter(function(p) { return p.length > 0; });
-  if (parts.length > 0) {
-    parts.pop();
-    var parentPath = parts.length === 0 ? '/' : '/' + parts.join('/');
-    browseDir(parentPath);
+  var rootPath = App.browserRootPath || '';
+  var currentPath = App.browserPath || '';
+
+  // 当前已在某个根目录（如 /downloads），返回多根选择视图
+  if (currentPath === rootPath || currentPath === '' || browserAtRoots) {
+    App.browserRootPath = '';
+    browseDir('');
+    return;
+  }
+
+  // 正常返回上层
+  if (rootPath && currentPath.startsWith(rootPath + '/')) {
+    // 在根目录下有子路径，返回上一级
+    var parts = currentPath.substring(rootPath.length + 1).split('/').filter(function(p) { return p.length > 0; });
+    if (parts.length > 0) {
+      parts.pop();
+      var parentPath = parts.length === 0 ? rootPath : rootPath + '/' + parts.join('/');
+      browseDir(parentPath);
+    } else {
+      browseDir(rootPath);
+    }
+  } else {
+    // 兜底：回退到多根列表
+    App.browserRootPath = '';
+    browseDir('');
   }
 });
 

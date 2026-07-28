@@ -336,12 +336,13 @@ export function createAPIHandler() {
         }
 
         // 安全检查：确保路径在允许的根路径下
-        const isAllowed = browseRoots.some(root =>
-          queryPath === root || queryPath.startsWith(root + '/') || queryPath === '/'
+        // 允许的情况：路径等于某个根、路径是某个根的子目录、或者没有配置 BROWSE_ROOTS
+        const isAllowed = browseRoots.length === 0 || browseRoots.some(root =>
+          queryPath === root || queryPath.startsWith(root + '/')
         );
 
-        if (!isAllowed && browseRoots.length > 0) {
-          json(res, { code: 1, error: '路径不在允许的浏览范围内' }, 403);
+        if (!isAllowed) {
+          json(res, { code: 1, error: '路径不在允许的浏览范围内: ' + queryPath }, 403);
           return;
         }
 
@@ -363,7 +364,11 @@ export function createAPIHandler() {
               if (a.isDir !== b.isDir) return a.isDir ? -1 : 1;
               return a.name.localeCompare(b.name, 'zh-CN');
             });
-          json(res, { code: 0, data: items, currentPath: queryPath });
+          // 找出当前路径所属的根路径
+          const matchedRoot = browseRoots.find(root =>
+            queryPath === root || queryPath.startsWith(root + '/')
+          ) || '';
+          json(res, { code: 0, data: items, currentPath: queryPath, rootPath: matchedRoot, roots: browseRoots.filter(r => fsExistsSync(r)) });
         } catch (err) {
           json(res, { code: 1, error: '无法读取目录: ' + err.message }, 500);
         }

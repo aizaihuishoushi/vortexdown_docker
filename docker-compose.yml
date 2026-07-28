@@ -1,9 +1,12 @@
 services:
   vortexdown:
-    # 方式一：从 GHCR 拉取镜像（需先在 GitHub 将 packages 可见性设为 Public）
-    image: ghcr.io/aizaihuishoushi/vortexdown_docker:latest
+    # 方式一：从 Docker Hub 拉取镜像（飞牛可直接搜索或输入镜像名）
+    image: zaizaiyang/vortexdown:latest
     #
-    # 方式二：本地构建（取消下面 build 注释，注释掉上面的 image）
+    # 方式二：从 GHCR 拉取（备用）
+    # image: ghcr.io/aizaihuishoushi/vortexdown_docker:latest
+    #
+    # 方式三：本地构建（取消下面 build 注释，注释掉上面的 image）
     # build: .
     container_name: vortexdown
     restart: unless-stopped
@@ -25,5 +28,5 @@ services:
       # 浏览文件时的根路径限制（可选，留空则允许浏览 / ）
       - BROWSE_ROOTS=/downloads,/host
     # fnOS 上建议不限制 user，让容器以 root 运行，
-    # 这样能正常写入挂载的 /vol1/1000 目录和 /tmp
+    # 这样能正常写入挂载的 /vol1/1000 目录
     privileged: false

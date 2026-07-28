@@ -1,12 +1,10 @@
-version: "3.8"
-
 services:
   vortexdown:
-    # 使用 GitHub Container Registry 镜像（发布后取消注释）
-    # image: ghcr.io/<your-github-username>/vortexdown:latest
+    # 方式一：从 GHCR 拉取镜像（需先在 GitHub 将 packages 可见性设为 Public）
+    image: ghcr.io/aizaihuishoushi/vortexdown_docker:latest
     #
-    # 本地构建时使用：
-    build: .
+    # 方式二：本地构建（取消下面 build 注释，注释掉上面的 image）
+    # build: .
     container_name: vortexdown
     restart: unless-stopped
     ports:
@@ -26,5 +24,6 @@ services:
       - DATA_DIR=/app/data
       # 浏览文件时的根路径限制（可选，留空则允许浏览 / ）
       - BROWSE_ROOTS=/downloads,/host
+    # fnOS 上建议不限制 user，让容器以 root 运行，
+    # 这样能正常写入挂载的 /vol1/1000 目录和 /tmp
     privileged: false
-    user: "1000:1000"

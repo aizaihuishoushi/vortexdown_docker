@@ -188,7 +188,9 @@ function buildArgs(task) {
   args.push('--thread-count', '16');
   args.push('-M', 'format=mp4');
 
-  const taskTmpDir = `/tmp/vortexdown/${task.id}`;
+  // Docker 环境下使用下载目录下的 .tmp 子目录，避免 /tmp 权限问题
+  const saveBaseDir = dirname(task.savePath);
+  const taskTmpDir = join(saveBaseDir, '.tmp', task.id);
   try { mkdirSync(taskTmpDir, { recursive: true }); } catch {}
   args.push('--tmp-dir', taskTmpDir);
 
@@ -205,7 +207,8 @@ function buildArgs(task) {
 export function downloadStream(task, onProgress, signal) {
   return new Promise((resolve, reject) => {
     const args = buildArgs(task);
-    const taskTmpDir = `/tmp/vortexdown/${task.id}`;
+    const saveBaseDir = dirname(task.savePath);
+    const taskTmpDir = join(saveBaseDir, '.tmp', task.id);
     const outputDir = dirname(task.savePath);
     let resolved = false;
     let lastBytes = 0;

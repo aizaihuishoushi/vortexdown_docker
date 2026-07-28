@@ -1,0 +1,21 @@
+{
+  "name": "vortexdown",
+  "version": "1.0.0",
+  "description": "VortexDown - Video downloader for NAS (Docker Edition)",
+  "type": "module",
+  "main": "app/server/index.js",
+  "scripts": {
+    "start": "node app/server/index.js",
+    "dev": "node --watch app/server/index.js"
+  },
+  "keywords": [
+    "downloader",
+    "m3u8",
+    "mpd",
+    "video",
+    "nas",
+    "docker",
+    "fnos"
+  ],
+  "license": "MIT"
+}

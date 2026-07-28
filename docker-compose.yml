@@ -1,0 +1,30 @@
+version: "3.8"
+
+services:
+  vortexdown:
+    # 使用 GitHub Container Registry 镜像（发布后取消注释）
+    # image: ghcr.io/<your-github-username>/vortexdown:latest
+    #
+    # 本地构建时使用：
+    build: .
+    container_name: vortexdown
+    restart: unless-stopped
+    ports:
+      - "19634:19634"
+    volumes:
+      # 下载目录 - 映射到 fnOS 的存储空间
+      - /vol1/1000/vortexdown/downloads:/downloads
+      # 数据持久化（任务记录、设置）
+      - /vol1/1000/vortexdown/data:/app/data
+      # 映射宿主机其他目录（可选，用于浏览文件选择保存路径）
+      - /vol1/1000:/host:ro
+    environment:
+      - TZ=Asia/Shanghai
+      - PORT=19634
+      - DOWNLOAD_DIR=/downloads
+      - VORTEXDOWN_ROOT=/app
+      - DATA_DIR=/app/data
+      # 浏览文件时的根路径限制（可选，留空则允许浏览 / ）
+      - BROWSE_ROOTS=/downloads,/host
+    privileged: false
+    user: "1000:1000"
